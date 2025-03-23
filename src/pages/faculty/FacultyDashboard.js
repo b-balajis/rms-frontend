@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
 import Loader from "../../components/Loader";
 import { API_BASE_URL, FACULTY_API_ENDPOINTS } from "../../data/Constants";
 import DepartmentsJson from "../../data/Departments.json";
@@ -26,9 +27,8 @@ const FacultyDashboard = () => {
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [department, setDepartment] = useState("All");
   const [batch, setBatch] = useState("");
-  const [sortField, setSortField] = useState("rollNumber");
-  const [sortOrder, setSortOrder] = useState("asc");
   const [percentageFilter, setPercentageFilter] = useState("");
+  const [maxActiveBacklogs, setMaxActiveBacklogs] = useState(""); // New State
   const [enableResultsBtn, setEnableResultsBtn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,32 +81,71 @@ const FacultyDashboard = () => {
       filtered.sort((a, b) => b.percentage - a.percentage);
     }
 
-    // Apply Sorting
-    setLoading(true);
-    filtered = filtered.sort((a, b) => {
-      if (sortField === "rollNumber") {
-        return sortOrder === "asc"
-          ? a.rollNumber.localeCompare(b.rollNumber)
-          : b.rollNumber.localeCompare(a.rollNumber);
-      } else if (sortField === "percentage") {
-        return sortOrder === "asc"
-          ? a.percentage - b.percentage
-          : b.percentage - a.percentage;
-      }
-      return 0;
-    });
+    // Apply Max Active Backlogs Filter
+    if (maxActiveBacklogs !== "") {
+      const maxBacklogs = parseInt(maxActiveBacklogs);
+      filtered = filtered.filter(
+        (student) => student.allActiveBacklogs <= maxBacklogs
+      );
+    }
 
     setFilteredStudents(filtered);
     setLoading(false);
-  }, [department, batch, students, sortField, sortOrder, percentageFilter]);
+  }, [department, batch, students, percentageFilter, maxActiveBacklogs]);
 
   const allSemesters = [
     ...new Set(students.flatMap((s) => s.semesters.map((sem) => sem.semester))),
   ].sort((a, b) => a - b);
 
-  const toggleSort = (field) => {
-    setSortField(field);
-    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim() === "") {
+        setFilteredStudents(students);
+      } else {
+        const filtered = students.filter((student) =>
+          student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setFilteredStudents(filtered);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, students]);
+
+  const handleDownloadExcel = () => {
+    if (filteredStudents.length === 0) {
+      alert("No data available to download.");
+      return;
+    }
+
+    // Format data for Excel
+    const dataForExcel = filteredStudents.map((student) => {
+      let studentData = {
+        "Roll No": student.rollNumber,
+        Name: student.name,
+        Department: department === "All" ? student.department : department,
+        CGPA: student.cgpa,
+        Percentage: `${student.percentage}%`,
+      };
+
+      // Add each semester's GPA
+      allSemesters.forEach((sem) => {
+        const semData = student.semesters.find((s) => s.semester === sem);
+        studentData[`Sem ${sem} GPA`] = semData
+          ? (Math.floor(semData.sgpa * 100) / 100).toFixed(2)
+          : "-";
+      });
+
+      return studentData;
+    });
+
+    // Create a new workbook and add the worksheet
+    const ws = XLSX.utils.json_to_sheet(dataForExcel);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Student Results");
+
+    // Download the Excel file
+    XLSX.writeFile(wb, `Student_Results_${batch}_${department}.xlsx`);
   };
 
   return (
@@ -120,7 +159,7 @@ const FacultyDashboard = () => {
 
       {/* Filters */}
       <div className="flex gap-4 mb-4">
-        <FormControl className="w-1/4">
+        <FormControl className="w-1/5">
           <InputLabel>Batch</InputLabel>
           <Select
             value={batch}
@@ -135,14 +174,13 @@ const FacultyDashboard = () => {
             ))}
           </Select>
         </FormControl>
-        <FormControl className="w-1/4">
+        <FormControl className="w-1/5">
           <InputLabel>Department</InputLabel>
           <Select
             value={department || "All"}
             onChange={(e) => setDepartment(e.target.value)}
             label="Department"
           >
-            {/* make it by default value */}
             <MenuItem key="All" value="All">
               All
             </MenuItem>
@@ -156,11 +194,21 @@ const FacultyDashboard = () => {
 
         {/* Percentage Filter */}
         <TextField
-          className="w-1/4"
+          className="w-1/5"
           label="Min Percentage"
           type="number"
           value={percentageFilter}
           onChange={(e) => setPercentageFilter(e.target.value)}
+          disabled={!enableResultsBtn}
+        />
+
+        {/* Max Active Backlogs Filter */}
+        <TextField
+          className="w-1/5"
+          label="Max Active Backlogs"
+          type="number"
+          value={maxActiveBacklogs}
+          onChange={(e) => setMaxActiveBacklogs(e.target.value)}
           disabled={!enableResultsBtn}
         />
 
@@ -172,7 +220,7 @@ const FacultyDashboard = () => {
           onClick={handleClick}
           disabled={!enableResultsBtn}
         >
-          {batch && !department ? "Get All Students Results" : "Get Results"}
+          Get Results
         </Button>
       </div>
 
@@ -188,62 +236,50 @@ const FacultyDashboard = () => {
                 fullWidth
                 variant="outlined"
                 size="small"
-                placeholder="Search for a student"
+                placeholder="Search for a student (regd no)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 sx={{
-                  pl: 4, // Adjust for icon spacing
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "8px",
                   },
                   "& .MuiOutlinedInput-input": {
-                    paddingLeft: "40px", // Adjust text padding due to icon
+                    paddingLeft: "12px",
                   },
                 }}
               />
             </Box>
-
-            {/* Students Count */}
-            <Typography variant="h6" fontWeight="bold" color="textPrimary">
-              {students.length} {students.length === 1 ? "Student" : "Students"}{" "}
-              Found
-            </Typography>
+            {filteredStudents.length > 0 && (
+              <Button
+                variant="contained"
+                color="secondary"
+                className="mb-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                onClick={handleDownloadExcel}
+              >
+                Download Excel
+              </Button>
+            )}
           </Box>
+
+          {/* Students Count */}
+          <Typography variant="h6" fontWeight="bold" color="textPrimary">
+            {filteredStudents.length}
+            {filteredStudents.length === 1 ? " Student" : " Students"} Found
+          </Typography>
 
           <TableContainer component={Paper} className="shadow-lg">
             <Table>
               <TableHead>
                 <TableRow className="bg-gray-200">
-                  <TableCell
-                    className="font-bold cursor-pointer"
-                    onClick={() => toggleSort("rollNumber")}
-                  >
-                    Roll No{" "}
-                    {sortField === "rollNumber"
-                      ? sortOrder === "asc"
-                        ? "⬆️"
-                        : "⬇️"
-                      : ""}
-                  </TableCell>
-
+                  <TableCell className="font-bold">Roll No</TableCell>
                   <TableCell className="font-bold">Name</TableCell>
                   <TableCell className="font-bold">CGPA</TableCell>
-
-                  <TableCell
-                    className="font-bold cursor-pointer"
-                    onClick={() => toggleSort("percentage")}
-                  >
-                    Percentage{" "}
-                    {sortField === "percentage"
-                      ? sortOrder === "asc"
-                        ? "⬆️"
-                        : "⬇️"
-                      : ""}
-                  </TableCell>
+                  <TableCell className="font-bold">Percentage</TableCell>
+                  <TableCell className="font-bold">Active Backlogs</TableCell>
 
                   {allSemesters.map((sem) => (
                     <TableCell key={sem} className="font-bold text-center">
-                      Sem {sem}
+                      Sem {sem}(GPA)
                     </TableCell>
                   ))}
                 </TableRow>
@@ -271,9 +307,9 @@ const FacultyDashboard = () => {
                     >
                       <TableCell>{student.rollNumber}</TableCell>
                       <TableCell>{student.name}</TableCell>
-
                       <TableCell>{student.cgpa}</TableCell>
                       <TableCell>{student.percentage}%</TableCell>
+                      <TableCell>{student.allActiveBacklogs}</TableCell>
 
                       {allSemesters.map((sem) => {
                         const semData = student.semesters.find(

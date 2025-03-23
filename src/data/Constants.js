@@ -14,6 +14,7 @@ export const ADMIN_API_ENDPOINTS = {
 
   // Subject routes
   CREATE_SUBJECT: "/admin/create-subject",
+  CREATE_SUBJECTS: "/admin/create-subjects",
   GET_ALL_SUBJECTS: "/admin/get-all-subjects",
   GET_SUBJECT_BY_ID: "/admin/get-subject-by-id",
   UPDATE_SUBJECT: "/admin/update-subject",
@@ -24,7 +25,6 @@ export const FACULTY_API_ENDPOINTS = {
   GET_ALL_STUDENT_RESULTS: "/faculty/get-all-students",
   GET_STUDENT_RESULTS: "/faculty/get-student-details",
   CREATE_STUDENT_RECORDS: "/faculty/upload/create-records",
-  CREATE_LATERAL_RECORDS: "/faculty/upload/create-lateral-records",
   UPDATE_STUDENT_RECORDS: "/faculty/upload/update-records",
   UPDATE_SUPPLY_RECORDS: "/faculty/upload/update-supply-records",
 };

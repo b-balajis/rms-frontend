@@ -1,4 +1,4 @@
-import { Edit } from "@mui/icons-material";
+import { Edit, UploadFile } from "@mui/icons-material"; // Added UploadFile icon
 import {
   Button,
   Dialog,
@@ -43,6 +43,7 @@ export default function SubjectsManager() {
   });
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null); // State for selected file
 
   useEffect(() => {
     fetchDepartments();
@@ -54,7 +55,6 @@ export default function SubjectsManager() {
       const response = await axios.get(
         `${API_BASE_URL}${ADMIN_API_ENDPOINTS.GET_DEPARTMENT_DETAILS}`
       );
-      // sort the departments by name
       const sortedDepartments = response.data.sort((a, b) =>
         a.name.localeCompare(b.name)
       );
@@ -68,13 +68,11 @@ export default function SubjectsManager() {
     setSnackbar({ open: true, message, severity });
   };
 
-  // 🔹 Fetch all subjects
   const fetchSubjects = async () => {
     try {
       const { data } = await axios.get(
         `${API_BASE_URL}${ADMIN_API_ENDPOINTS.GET_ALL_SUBJECTS}`
       );
-      //   sort them based on code
       const sortedSubjects = data.sort((a, b) => a.code.localeCompare(b.code));
       setSubjects(sortedSubjects);
     } catch (error) {
@@ -86,12 +84,10 @@ export default function SubjectsManager() {
     fetchSubjects();
   }, []);
 
-  // 🔹 Handle form input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 🔹 Open modal for Add/Edit
   const handleOpen = (subject = null) => {
     if (subject) {
       setFormData(subject);
@@ -109,13 +105,11 @@ export default function SubjectsManager() {
     setOpen(true);
   };
 
-  // 🔹 Close modal
   const handleClose = () => {
     setDepartment("");
     setOpen(false);
   };
 
-  // 🔹 Add or Update subject
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -150,17 +144,63 @@ export default function SubjectsManager() {
     }));
   };
 
+  // 🔹 Handle File Selection
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  // 🔹 Upload Excel File
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      showSnackbar("Please select a file!", "error");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      await axios.post(
+        `${API_BASE_URL}${ADMIN_API_ENDPOINTS.CREATE_SUBJECTS}`, // Your API endpoint
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      showSnackbar("File uploaded successfully!", "success");
+      fetchSubjects();
+    } catch (error) {
+      console.error("Upload error:", error);
+      showSnackbar("Failed to upload file", "error");
+    }
+  };
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">📚 Subjects Management</h2>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => handleOpen()}
-        className="mb-4"
-      >
-        ➕ Add Subject
-      </Button>
+      <div className="mb-4 flex gap-3">
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => handleOpen()}
+        >
+          ➕ Add Subject
+        </Button>
+        {/* Upload Excel Button */}
+        <Button variant="contained" color="secondary" component="label">
+          <UploadFile />
+          Upload Excel
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            hidden
+            onChange={handleFileChange}
+          />
+        </Button>
+        {selectedFile && (
+          <Button variant="contained" color="success" onClick={handleUpload}>
+            📤 Upload
+          </Button>
+        )}
+      </div>
 
       {/* Table for displaying subjects */}
       <TableContainer component={Paper}>
@@ -183,7 +223,10 @@ export default function SubjectsManager() {
                 <strong>Regulation</strong>
               </TableCell>
               <TableCell>
-                <strong>Actions</strong>
+                <strong>Semester</strong>
+              </TableCell>
+              <TableCell>
+                <strong>Edit</strong>
               </TableCell>
             </TableRow>
           </TableHead>
@@ -195,6 +238,7 @@ export default function SubjectsManager() {
                 <TableCell>{subject.credits}</TableCell>
                 <TableCell>{subject.department || "N/A"}</TableCell>
                 <TableCell>{subject.academicRegulation}</TableCell>
+                <TableCell>{subject.semester}</TableCell>
                 <TableCell>
                   <IconButton
                     onClick={() => handleOpen(subject)}
@@ -202,13 +246,6 @@ export default function SubjectsManager() {
                   >
                     <Edit />
                   </IconButton>
-                  {/* <IconButton
-                    onClick={() => handleDelete(subject._id)}
-                    color="error"
-                    disabled
-                  >
-                    <Delete />
-                  </IconButton> */}
                 </TableCell>
               </TableRow>
             ))}

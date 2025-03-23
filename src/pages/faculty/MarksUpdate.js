@@ -21,14 +21,15 @@ import {
   FACULTY_API_ENDPOINTS,
 } from "../../data/Constants";
 
+import { CheckCircle, Error, Warning } from "@mui/icons-material";
+
 const MarksUpdate = () => {
-  const [batch, setBatch] = useState("");
   const [semester, setSemester] = useState("");
   const [studentsType, setStudentsType] = useState("");
   const [regulation, setRegulation] = useState("");
   const [file, setFile] = useState(null);
   const [examType, setExamType] = useState("");
-  const [uploaded, setUploaded] = useState(false);
+  const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e) => {
@@ -38,73 +39,208 @@ const MarksUpdate = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
-    formData.append("batch", batch);
     formData.append("semester", semester);
     formData.append("type", studentsType);
     formData.append("file", file);
     formData.append("regulation", regulation);
     formData.append("examType", examType);
 
-    try {
-      // declare APIENDPOINT with let
-      setLoading(true);
-      let ApiEndpoint = `${API_BASE_URL}${
-        examType === "Supply"
-          ? FACULTY_API_ENDPOINTS.UPDATE_SUPPLY_RECORDS
-          : studentsType === "lateral" && semester === 3
-          ? FACULTY_API_ENDPOINTS.CREATE_LATERAL_RECORDS
-          : semester !== 1
-          ? FACULTY_API_ENDPOINTS.UPDATE_STUDENT_RECORDS
-          : FACULTY_API_ENDPOINTS.CREATE_STUDENT_RECORDS
-      }`;
+    setLoading(true);
+    setResponse(null);
 
-      const response = await fetch(`${ApiEndpoint}`, {
-        method: "POST",
+    let ApiEndpoint = `${
+      examType === "Supply"
+        ? FACULTY_API_ENDPOINTS.UPDATE_SUPPLY_RECORDS
+        : studentsType === "lateral" && semester === 3
+        ? FACULTY_API_ENDPOINTS.CREATE_STUDENT_RECORDS
+        : semester !== 1
+        ? FACULTY_API_ENDPOINTS.UPDATE_STUDENT_RECORDS
+        : FACULTY_API_ENDPOINTS.CREATE_STUDENT_RECORDS
+    }`;
+
+    const isUpdateOperation =
+      ApiEndpoint === FACULTY_API_ENDPOINTS.UPDATE_SUPPLY_RECORDS ||
+      ApiEndpoint === FACULTY_API_ENDPOINTS.UPDATE_STUDENT_RECORDS;
+
+    ApiEndpoint = `${API_BASE_URL}${ApiEndpoint}`;
+
+    try {
+      const res = await fetch(ApiEndpoint, {
+        method: isUpdateOperation ? "PATCH" : "POST", // Use PATCH for updates
         body: formData,
       });
-      const result = await response.json();
-      if (result.success) {
-        setUploaded(true);
-        console.log(result, uploaded);
-        StudentUploadResult(result);
-      } else {
-        console.log(result);
-      }
+
+      const result = await res.json();
       setLoading(false);
+
+      if (res.status === 201 || res.status === 207 || res.status === 200) {
+        setResponse({ success: true, data: result });
+
+        // Clear the form after success
+        setSemester("");
+        setStudentsType("");
+        setRegulation("");
+        setExamType("");
+        setFile(null);
+      } else if (res.status === 409) {
+        setResponse({
+          success: false,
+          message: "All records were duplicates.",
+        });
+      } else if (res.status === 400) {
+        setResponse({ success: false, message: "Invalid file data." });
+      } else {
+        setResponse({ success: false, message: result.message });
+      }
     } catch (error) {
-      console.error("Upload failed", error);
+      setLoading(false);
+      setResponse({ success: false, message: "Upload failed. Try again." });
     }
   };
 
   const StudentUploadResult = ({ response }) => {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-100 p-4">
-        <Card className="w-full max-w-md shadow-lg rounded-2xl">
-          <CardContent>
-            <Typography
-              variant="h5"
-              className="text-center font-semibold text-green-600"
-            >
-              {response.message}
-            </Typography>
+    if (!response) return null;
 
-            {response.missedEntries.length > 0 && (
+    const { success, data, message } = response;
+    const {
+      noOfRecordsUpdated,
+      missedEntries,
+      skippedEntries,
+      duplicateEntries,
+      noOfRecordsSaved,
+    } = data || {};
+
+    return (
+      <div className="flex justify-center items-center mt-6">
+        <Card
+          className={`w-full max-w-4xl p-6 rounded-lg shadow-md border-l-4 ${
+            success
+              ? "border-green-500 bg-green-50"
+              : "border-red-500 bg-red-50"
+          }`}
+        >
+          <CardContent>
+            {/* Message & Status Icon */}
+            <div className="flex items-center mb-4">
+              {success ? (
+                <CheckCircle className="text-green-600 mr-2" fontSize="large" />
+              ) : (
+                <Error className="text-red-600 mr-2" fontSize="large" />
+              )}
+              <Typography
+                variant="h6"
+                className={success ? "text-green-700" : "text-red-700"}
+              >
+                {success ? data.message : message}
+              </Typography>
+            </div>
+
+            {/* Number of Records Updated */}
+            {success && noOfRecordsUpdated !== undefined && (
+              <Typography variant="body1" className="mb-4 text-gray-700">
+                ✅ <strong>{noOfRecordsUpdated}</strong> records were
+                successfully updated.
+              </Typography>
+            )}
+
+            {/* No of records saved  with dashboard link*/}
+            {success && noOfRecordsSaved !== undefined && (
+              <Typography variant="body1" className="mb-4 text-gray-700">
+                <strong>{noOfRecordsSaved}</strong> records were saved
+                successfully. You can view the records on the{" "}
+                <a
+                  className="text-blue-600 hover:text-blue-800"
+                  href="/f/dashboard"
+                >
+                  Dashboard
+                </a>{" "}
+                page.
+              </Typography>
+            )}
+
+            {/* Missed Entries Table */}
+            {missedEntries?.length > 0 && (
               <div className="mt-4">
-                <Typography variant="h6" className="text-gray-700">
-                  Missed Entries:
+                <Typography
+                  variant="h6"
+                  className="text-red-700 flex items-center"
+                >
+                  <Warning className="mr-2" /> Missed Entries (Not Found)
                 </Typography>
-                <Table className="mt-2 border">
+                <Table className="mt-2">
                   <TableHead>
-                    <TableRow className="bg-gray-200">
+                    <TableRow>
                       <TableCell className="font-semibold">Regd No</TableCell>
-                      <TableCell className="font-semibold">Name</TableCell>
+                      <TableCell className="font-semibold">Reason</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {response.missedEntries.map((entry, index) => (
-                      <TableRow key={index} className="hover:bg-gray-100">
+                    {missedEntries.map((entry, index) => (
+                      <TableRow key={index}>
                         <TableCell>{entry.regdno}</TableCell>
-                        <TableCell>{entry.name}</TableCell>
+                        <TableCell className="text-red-600">
+                          {entry.reason}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Duplicate entries table */}
+            {duplicateEntries?.length > 0 && (
+              <div className="mt-4">
+                <Typography
+                  variant="h6"
+                  className="text-green-700 flex items-center"
+                >
+                  <Warning className="mr-2" /> Duplicate Entries (Not Found)
+                </Typography>
+                <Table className="mt-2">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell className="font-semibold">Regd No</TableCell>
+                      <TableCell className="font-semibold">Reason</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {duplicateEntries.map((entry, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{entry}</TableCell>
+                        <TableCell className="text-red-600">
+                          Repeated Entry
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Skipped Entries Table */}
+            {skippedEntries?.length > 0 && (
+              <div className="mt-4">
+                <Typography
+                  variant="h6"
+                  className="text-yellow-700 flex items-center"
+                >
+                  <Warning className="mr-2" /> Skipped Entries (Already Exists)
+                </Typography>
+                <Table className="mt-2">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell className="font-semibold">Regd No</TableCell>
+                      <TableCell className="font-semibold">Reason</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {skippedEntries.map((entry, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{entry.regdno}</TableCell>
+                        <TableCell className="text-yellow-600">
+                          {entry.reason}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -117,17 +253,17 @@ const MarksUpdate = () => {
     );
   };
 
-  // use loading circular progress
   if (loading) {
     return <Loader />;
   }
+
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold mb-4 text-center">
         Upload/Update Student Results
       </h2>
       <form onSubmit={handleSubmit}>
-        <div className="mb-4">
+        <div className="grid grid-cols-2 gap-4">
           <FormControl fullWidth>
             <InputLabel>Select Exam Category</InputLabel>
             <Select
@@ -139,25 +275,6 @@ const MarksUpdate = () => {
               <MenuItem value="Supply">Supply</MenuItem>
             </Select>
           </FormControl>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <FormControl fullWidth>
-            <InputLabel>Batch (Year)</InputLabel>
-            <Select
-              value={batch}
-              onChange={(e) => setBatch(e.target.value)}
-              label="Batch (Year)"
-            >
-              {Array.from(
-                { length: new Date().getFullYear() - 2010 + 1 },
-                (_, i) => (
-                  <MenuItem key={2010 + i} value={2010 + i}>
-                    {2010 + i}
-                  </MenuItem>
-                )
-              )}
-            </Select>
-          </FormControl>
           <FormControl fullWidth>
             <InputLabel>Students Type</InputLabel>
             <Select
@@ -165,15 +282,9 @@ const MarksUpdate = () => {
               onChange={(e) => setStudentsType(e.target.value)}
               label="Students Type"
             >
-              <MenuItem key="all" value="all">
-                All
-              </MenuItem>
-              <MenuItem key="regular" value="regular">
-                Regular
-              </MenuItem>
-              <MenuItem key="lateral" value="lateral">
-                Lateral
-              </MenuItem>
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="regular">Regular</MenuItem>
+              <MenuItem value="lateral">Lateral</MenuItem>
             </Select>
           </FormControl>
 
@@ -196,7 +307,6 @@ const MarksUpdate = () => {
             </Select>
           </FormControl>
 
-          {/* add another input field to select regulation */}
           <FormControl fullWidth>
             <InputLabel>Regulation</InputLabel>
             <Select
@@ -222,14 +332,13 @@ const MarksUpdate = () => {
           variant="contained"
           color="primary"
           className="mt-4 w-full"
-          disabled={!batch || !semester || !studentsType || !file}
+          disabled={!semester || !studentsType || !file}
         >
           Upload
         </Button>
       </form>
 
-      {/* will receive a message if the file is uploaded successfully, it also contains missed entries display missed entries*/}
-      {uploaded && { StudentUploadResult }}
+      {response && <StudentUploadResult response={response} />}
     </div>
   );
 };

@@ -9,11 +9,11 @@ const Navbar = () => {
 
   return (
     <div>
-      {/* <img
+      <img
         src="http://becbapatla.ac.in/wp-content/uploads/banner-copy-1-copy.jpg"
         alt="College Banner"
         style={{ width: "100%", height: "auto" }}
-      /> */}
+      />
       <nav className="bg-blue-600 p-4 text-white flex justify-between items-center">
         <ul className="flex space-x-4">
           {/* Dynamically render role-based links with custom names */}

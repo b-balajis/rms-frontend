@@ -1,8 +1,8 @@
 import Profile from "../components/Profile";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import DepartmentsDetails from "../pages/admin/DepartmentsDetails";
-import GPAComparison from "../pages/admin/GPAComparison";
 import SubjectManger from "../pages/admin/SubjectsManger";
+import DisplaySubjects from "../pages/faculty/DisplaySubjects";
 import FacultyDashboard from "../pages/faculty/FacultyDashboard";
 import MarksUpdate from "../pages/faculty/MarksUpdate";
 import StudentDashboard from "../pages/student/StudentDashboard";
@@ -22,14 +22,14 @@ const routesConfig = {
       element: <SubjectManger />,
       name: "Subjects",
     },
-    {
-      path: "/a/r20r24-comparison",
-      element: <GPAComparison />,
-      name: "R20-R24 Comparison",
-    },
   ],
   faculty: [
     { path: "/f/dashboard", element: <FacultyDashboard />, name: "Home" },
+    {
+      path: "/f/subjects",
+      element: <DisplaySubjects />,
+      name: "Subjects",
+    },
     { path: "/f/marksupload", element: <MarksUpdate />, name: "Marks Update" },
     { path: "/f/profile", element: <Profile />, name: "Profile" },
   ],
