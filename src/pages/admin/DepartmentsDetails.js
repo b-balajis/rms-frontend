@@ -52,8 +52,6 @@ const DepartmentsDetails = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  console.log(editId, "----");
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {

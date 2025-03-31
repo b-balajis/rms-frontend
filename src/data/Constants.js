@@ -12,9 +12,13 @@ export const ADMIN_API_ENDPOINTS = {
   UPDATE_DEPARTMENT_DETAILS: "/admin/update-department",
   DELETE_DEPARTMENT: "/admin/delete-department",
 
+  // Faculty Routes
+  GET_ALL_FACULTY_DETAILS: "/admin/get-all-faculty-details",
+  CREATE_FACULTY_PROFILE: "/admin/create-faculty-profile",
+
   // Subject routes
   CREATE_SUBJECT: "/admin/create-subject",
-  CREATE_SUBJECTS: "/admin/create-subjects",
+  CREATE_SUBJECTS: "/admin/upload/create-subjects",
   GET_ALL_SUBJECTS: "/admin/get-all-subjects",
   GET_SUBJECT_BY_ID: "/admin/get-subject-by-id",
   UPDATE_SUBJECT: "/admin/update-subject",
@@ -27,6 +31,10 @@ export const FACULTY_API_ENDPOINTS = {
   CREATE_STUDENT_RECORDS: "/faculty/upload/create-records",
   UPDATE_STUDENT_RECORDS: "/faculty/upload/update-records",
   UPDATE_SUPPLY_RECORDS: "/faculty/upload/update-supply-records",
+};
+
+export const STUDENT_API_ENDPOINTS = {
+  GET_ALL_STUDENT_RESULTS: "/student/get-student-details",
 };
 
 // create an object and export academic regulations

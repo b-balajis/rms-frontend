@@ -1,10 +1,10 @@
 import React from "react";
-import FacultyList from "./FacultyList";
+import MarksDashboard from "../../components/MarksDashboard";
 
 const AdminDashboard = () => {
   return (
     <>
-      <FacultyList />
+      <MarksDashboard />
     </>
   );
 };

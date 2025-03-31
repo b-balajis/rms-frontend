@@ -19,6 +19,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Typography,
 } from "@mui/material";
 import MuiAlert from "@mui/material/Alert";
 import axios from "axios";
@@ -176,7 +177,7 @@ export default function SubjectsManager() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">📚 Subjects Management</h2>
-      <div className="mb-4 flex gap-3">
+      <div className="mb-4 flex gap-3 items-center">
         <Button
           variant="contained"
           color="primary"
@@ -184,17 +185,21 @@ export default function SubjectsManager() {
         >
           ➕ Add Subject
         </Button>
+
         {/* Upload Excel Button */}
         <Button variant="contained" color="secondary" component="label">
           <UploadFile />
           Upload Excel
-          <input
-            type="file"
-            accept=".xlsx, .xls"
-            hidden
-            onChange={handleFileChange}
-          />
+          <input type="file" name="file" hidden onChange={handleFileChange} />
         </Button>
+
+        {/* Display selected file name */}
+        {selectedFile && (
+          <Typography variant="body1" className="text-gray-700">
+            📄 {selectedFile.name}
+          </Typography>
+        )}
+
         {selectedFile && (
           <Button variant="contained" color="success" onClick={handleUpload}>
             📤 Upload

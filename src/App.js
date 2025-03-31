@@ -9,7 +9,6 @@ import {
 import Navbar from "./components/Navbar";
 import RequireAuth from "./components/RequireAuth"; // Auth Wrapper
 import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
 import NotFound from "./pages/NotFound";
 import routesConfig from "./routes/routesConfig";
 
@@ -32,7 +31,6 @@ const MainLayout = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
         <Route path="/404" element={<NotFound />} />
 
         {/* Role-based routes (Protected) */}

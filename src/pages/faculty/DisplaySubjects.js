@@ -43,7 +43,7 @@ export default function DisplaySubjects() {
         placeholder="Search subjects..."
         onChange={(e) => {
           const filteredSubjects = subjects.filter((subject) =>
-            subject.name.toLowerCase().includes(e.target.value.toLowerCase())
+            subject.code.includes(e.target.value)
           );
           setSubjects(filteredSubjects);
         }}

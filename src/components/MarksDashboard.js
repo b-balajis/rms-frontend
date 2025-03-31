@@ -18,11 +18,11 @@ import {
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
-import Loader from "../../components/Loader";
-import { API_BASE_URL, FACULTY_API_ENDPOINTS } from "../../data/Constants";
-import DepartmentsJson from "../../data/Departments.json";
+import { API_BASE_URL, FACULTY_API_ENDPOINTS } from "../data/Constants";
+import DepartmentsJson from "../data/Departments.json";
+import Loader from "./Loader";
 
-const FacultyDashboard = () => {
+const MarksDashboard = () => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [department, setDepartment] = useState("All");
@@ -353,4 +353,4 @@ const FacultyDashboard = () => {
   );
 };
 
-export default FacultyDashboard;
+export default MarksDashboard;

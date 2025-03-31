@@ -35,12 +35,12 @@ const Login = () => {
       if (response.data.success) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("role", userRole.toLocaleLowerCase());
+        localStorage.setItem("email", email);
 
         // Redirect based on role
         if (userRole.toLocaleLowerCase() === "admin") {
           navigate("/a/dashboard");
         } else if (userRole.toLocaleLowerCase() === "faculty") {
-          console.log("logged faculty");
           navigate("/f/dashboard");
         } else if (userRole.toLocaleLowerCase() === "student") {
           navigate("/s/dashboard");
