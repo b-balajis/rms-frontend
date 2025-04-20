@@ -1,7 +1,9 @@
 import {
   Box,
   Button,
+  Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
@@ -28,7 +30,9 @@ const FacultyDashboard = () => {
   const [department, setDepartment] = useState("All");
   const [batch, setBatch] = useState("");
   const [percentageFilter, setPercentageFilter] = useState("");
-  const [maxActiveBacklogs, setMaxActiveBacklogs] = useState(""); // New State
+  const [topNstudents, setTopNstudents] = useState("");
+  const [maxActiveBacklogs, setMaxActiveBacklogs] = useState("");
+  const [zeroBacklogHistoryOnly, setZeroBacklogHistoryOnly] = useState(false); // ✅ New State
   const [enableResultsBtn, setEnableResultsBtn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,6 +45,7 @@ const FacultyDashboard = () => {
     } else {
       ApiEndPoint = `${API_BASE_URL}${FACULTY_API_ENDPOINTS.GET_STUDENT_RESULTS}?department=${department}&batch=${batch}`;
     }
+
     axios
       .get(`${ApiEndPoint}`)
       .then((response) => {
@@ -48,7 +53,10 @@ const FacultyDashboard = () => {
         setFilteredStudents(response.data);
         setLoading(false);
       })
-      .catch((error) => console.error("Error fetching students:", error));
+      .catch((error) => {
+        console.error("Error fetching students:", error);
+        setLoading(false);
+      });
   };
 
   const startYear = 2010;
@@ -62,36 +70,58 @@ const FacultyDashboard = () => {
   );
 
   useEffect(() => {
+    const filterStudents = () => {
+      let filtered = students;
+
+      setEnableResultsBtn(!!batch);
+
+      if (percentageFilter !== "") {
+        const minPercentage = parseFloat(percentageFilter);
+        filtered = filtered.filter(
+          (student) => student.percentage >= minPercentage
+        );
+        filtered.sort((a, b) => b.percentage - a.percentage);
+      }
+
+      if (maxActiveBacklogs !== "") {
+        const maxBacklogs = parseInt(maxActiveBacklogs);
+        filtered = filtered.filter(
+          (student) => student.allActiveBacklogs <= maxBacklogs
+        );
+      }
+
+      if (topNstudents !== "") {
+        const topN = parseInt(topNstudents);
+        filtered.sort((a, b) => b.percentage - a.percentage);
+        filtered = filtered.slice(0, topN);
+      }
+
+      // ✅ New Zero Backlog History Filter
+      if (zeroBacklogHistoryOnly) {
+        filtered = filtered.filter(
+          (student) => student.allActiveBacklogs === 0
+        );
+      }
+
+      setFilteredStudents(filtered);
+    };
+
     setLoading(true);
-    let filtered = students;
+    const timeout = setTimeout(() => {
+      filterStudents();
+      setLoading(false);
+    }, 200);
 
-    if (batch) {
-      setEnableResultsBtn(true);
-    } else {
-      setEnableResultsBtn(false);
-    }
-
-    // Apply Percentage Filter
-    if (percentageFilter !== "") {
-      const minPercentage = parseFloat(percentageFilter);
-      filtered = filtered.filter(
-        (student) => student.percentage >= minPercentage
-      );
-
-      filtered.sort((a, b) => b.percentage - a.percentage);
-    }
-
-    // Apply Max Active Backlogs Filter
-    if (maxActiveBacklogs !== "") {
-      const maxBacklogs = parseInt(maxActiveBacklogs);
-      filtered = filtered.filter(
-        (student) => student.allActiveBacklogs <= maxBacklogs
-      );
-    }
-
-    setFilteredStudents(filtered);
-    setLoading(false);
-  }, [department, batch, students, percentageFilter, maxActiveBacklogs]);
+    return () => clearTimeout(timeout);
+  }, [
+    department,
+    batch,
+    students,
+    percentageFilter,
+    maxActiveBacklogs,
+    topNstudents,
+    zeroBacklogHistoryOnly,
+  ]);
 
   const allSemesters = [
     ...new Set(students.flatMap((s) => s.semesters.map((sem) => sem.semester))),
@@ -118,7 +148,6 @@ const FacultyDashboard = () => {
       return;
     }
 
-    // Format data for Excel
     const dataForExcel = filteredStudents.map((student) => {
       let studentData = {
         "Roll No": student.rollNumber,
@@ -128,7 +157,6 @@ const FacultyDashboard = () => {
         Percentage: `${student.percentage}%`,
       };
 
-      // Add each semester's GPA
       allSemesters.forEach((sem) => {
         const semData = student.semesters.find((s) => s.semester === sem);
         studentData[`Sem ${sem} GPA`] = semData
@@ -139,12 +167,9 @@ const FacultyDashboard = () => {
       return studentData;
     });
 
-    // Create a new workbook and add the worksheet
     const ws = XLSX.utils.json_to_sheet(dataForExcel);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Student Results");
-
-    // Download the Excel file
     XLSX.writeFile(wb, `Student_Results_${batch}_${department}.xlsx`);
   };
 
@@ -158,8 +183,8 @@ const FacultyDashboard = () => {
       </Typography>
 
       {/* Filters */}
-      <div className="flex gap-4 mb-4">
-        <FormControl className="w-1/5">
+      <div className="flex gap-4 mb-4 justify-center px-6">
+        <FormControl fullWidth>
           <InputLabel>Batch</InputLabel>
           <Select
             value={batch}
@@ -174,7 +199,8 @@ const FacultyDashboard = () => {
             ))}
           </Select>
         </FormControl>
-        <FormControl className="w-1/5">
+
+        <FormControl fullWidth>
           <InputLabel>Department</InputLabel>
           <Select
             value={department || "All"}
@@ -191,10 +217,15 @@ const FacultyDashboard = () => {
             ))}
           </Select>
         </FormControl>
+      </div>
 
-        {/* Percentage Filter */}
+      <div
+        className={`flex gap-4 mb-4 justify-center ${
+          !enableResultsBtn ? "hidden" : ""
+        }`}
+      >
         <TextField
-          className="w-1/5"
+          className="w-1/4"
           label="Min Percentage"
           type="number"
           value={percentageFilter}
@@ -202,9 +233,8 @@ const FacultyDashboard = () => {
           disabled={!enableResultsBtn}
         />
 
-        {/* Max Active Backlogs Filter */}
         <TextField
-          className="w-1/5"
+          className="w-1/4"
           label="Max Active Backlogs"
           type="number"
           value={maxActiveBacklogs}
@@ -212,11 +242,31 @@ const FacultyDashboard = () => {
           disabled={!enableResultsBtn}
         />
 
-        {/* Fetch Results Button */}
+        <TextField
+          className="w-1/4"
+          label="Top N Students"
+          type="number"
+          value={topNstudents}
+          onChange={(e) => setTopNstudents(e.target.value)}
+        />
+
+        {/* ✅ Zero Backlog History Checkbox */}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={zeroBacklogHistoryOnly}
+              onChange={(e) => setZeroBacklogHistoryOnly(e.target.checked)}
+            />
+          }
+          label="Only 0 Backlog History"
+        />
+      </div>
+
+      <div className="flex justify-center my-2">
         <Button
           variant="contained"
           color="primary"
-          className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded"
+          className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded w-1/2"
           onClick={handleClick}
           disabled={!enableResultsBtn}
         >
@@ -224,13 +274,11 @@ const FacultyDashboard = () => {
         </Button>
       </div>
 
-      {/* Student Table */}
       {loading ? (
         <Loader />
       ) : (
         <>
           <Box className="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
-            {/* Search Bar */}
             <Box className="relative w-full md:w-1/2 flex items-center">
               <TextField
                 fullWidth
@@ -261,10 +309,9 @@ const FacultyDashboard = () => {
             )}
           </Box>
 
-          {/* Students Count */}
           <Typography variant="h6" fontWeight="bold" color="textPrimary">
-            {filteredStudents.length}
-            {filteredStudents.length === 1 ? " Student" : " Students"} Found
+            {filteredStudents.length}{" "}
+            {filteredStudents.length === 1 ? "Student" : "Students"} Found
           </Typography>
 
           <TableContainer component={Paper} className="shadow-lg">
@@ -276,7 +323,6 @@ const FacultyDashboard = () => {
                   <TableCell className="font-bold">CGPA</TableCell>
                   <TableCell className="font-bold">Percentage</TableCell>
                   <TableCell className="font-bold">Active Backlogs</TableCell>
-
                   {allSemesters.map((sem) => (
                     <TableCell key={sem} className="font-bold text-center">
                       Sem {sem}(GPA)
@@ -284,7 +330,6 @@ const FacultyDashboard = () => {
                   ))}
                 </TableRow>
               </TableHead>
-
               <TableBody>
                 {filteredStudents.length === 0 ? (
                   <TableRow>
@@ -321,12 +366,10 @@ const FacultyDashboard = () => {
                           {student.rollNumber}
                         </button>
                       </TableCell>
-
                       <TableCell>{student.name}</TableCell>
                       <TableCell>{student.cgpa}</TableCell>
                       <TableCell>{student.percentage}%</TableCell>
                       <TableCell>{student.allActiveBacklogs}</TableCell>
-
                       {allSemesters.map((sem) => {
                         const semData = student.semesters.find(
                           (s) => s.semester === sem
