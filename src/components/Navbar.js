@@ -1,6 +1,7 @@
 import { AccountCircle, ExitToApp } from "@mui/icons-material"; // Import MUI icons
 import React from "react";
 import { Link } from "react-router-dom";
+import Banner from "../assets/banner.jpg";
 import routesConfig from "../routes/routesConfig";
 
 const Navbar = () => {
@@ -10,7 +11,7 @@ const Navbar = () => {
   return (
     <div>
       <img
-        src="http://becbapatla.ac.in/wp-content/uploads/banner-copy-1-copy.jpg"
+        src={Banner}
         alt="College Banner"
         style={{ width: "100%", height: "auto" }}
       />
